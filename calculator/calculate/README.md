@@ -1,25 +1,15 @@
-## Student Grade Workbench (Flutter + CLI)
+## Student Grade Calculator (Dart)
 
-This project now includes:
+This CLI app helps you:
 
-1. A **mobile + desktop Flutter GUI** (Android + Windows) for uploading student files, calculating grades, previewing results, and downloading generated files.
-2. The original **Dart grading library + CLI** logic, which runs on desktop.
-
-### Supported Input Formats
-
-- Excel: `.xlsx`
-- CSV: `.csv`
-- HTML table: `.html`
-- PDF text table: `.pdf`
-
-### Supported Download Formats
-
-- Excel: `.xlsx`
-- CSV: `.csv`
-- HTML: `.html`
-- PDF: `.pdf`
+1. Export a fillable Excel template.
+2. Import your filled student sheet.
+3. Generate a new Excel file with calculated grade number (out of 100) and
+grade letter.
 
 ### Required Columns
+
+The input Excel sheet must contain these fields in the first row:
 
 - Name
 - Course
@@ -27,19 +17,18 @@ This project now includes:
 - Email
 - CA Marks
 - Attendance Marks
+- Assignment Marks
 - Exam Marks
-- Assignment Marks (optional)
 
-Header matching is flexible and supports common variants/typos.
+Header matching is flexible. Common variations and typos are accepted, for
+example:
 
-### Run the GUI
+- `Matricle` (for `Matricule`)
+- `Attendance marks`
+- `Asignment marks`
+- `Exam /70`, `CA /30`, `Assignment /10`
 
-```bash
-flutter pub get
-flutter run
-```
-
-### CLI Usage
+### Commands
 
 Create a template:
 
@@ -47,46 +36,69 @@ Create a template:
 dart run bin/calculate.dart template ./student_template.xlsx
 ```
 
-Process an uploaded file and auto-create output next to input:
+You can also create template with default name in current folder:
 
 ```bash
-dart run bin/calculate.dart ./students.xlsx
+dart run bin/calculate.dart template
 ```
 
-Process with explicit output path (format inferred from extension):
+Process a filled sheet and auto-create output next to it:
 
 ```bash
-dart run bin/calculate.dart ./students.csv ./graded_students.pdf
+dart run bin/calculate.dart "C:/path/from/your/computer/students.xlsx"
 ```
+
+Process with explicit output path:
+
+```bash
+dart run bin/calculate.dart ./students.xlsx ./graded_students.xlsx
+```
+
+### Terminal Output
+
+When you process a file, the app prints:
+
+- `INPUT EXCEL FILE` absolute path
+- `INPUT EXCEL DATA` (rows from the imported workbook)
+- `OUTPUT EXCEL FILE` absolute path
+- `OUTPUT EXCEL DATA` (rows with computed coursework, grade number, grade letter)
+- a final completion line: `Process complete. You can close this terminal now.`
 
 ### Grade Logic
 
-- If assignment is present:
-  - Coursework Raw = `CA + Attendance + Assignment` (out of `50`)
-  - Coursework Scaled = `(Coursework Raw / 50) * 30`
-- If assignment is missing:
-  - Coursework Raw = `CA + Attendance` (out of `40`)
-  - Coursework Scaled = `(Coursework Raw / 40) * 30`
-- Total = `Coursework Scaled + Exam` (out of `100`)
-- Grade letters:
-  - `A` >= 80
-  - `B+` >= 70
-  - `B` >= 60
-  - `C+` >= 55
-  - `C` >= 50
-  - `D+` >= 45
-  - `D` >= 40
-  - `F` < 40
+- Coursework Raw = `CA Marks + Attendance Marks + Assignment Marks` (out of `50`)
+- Coursework Scaled = `(Coursework Raw / 50) * 30` (out of `30`)
+- Grade Number = `Coursework Scaled + Exam Marks` (out of `100`)
+- Letter grade:
+- `A` for `>= 80`
+  - `B+` for `>= 70`
+  - `B` for `>= 60`
+  - `C+` for `>= 55`
+  - `C` for `>= 50`
+  - `D+` for `>= 45`
+  - `D` for `>= 40`
+  - `F` for `< 40`
 
-### Programming Requirements Included
+### Null Safety / Edge Cases
 
-- Data-class operations on `StudentRecord`:
-  - `filterStudentsByMinimumScore`
-  - `calculateAverageTotalScore`
-  - `buildLetterGradeDistribution`
-- Custom higher-order function:
-  - `reduceStudentRecords`
-- Lambda passed to custom HOF:
-  - In `calculateAverageTotalScore` and tests
-- Collection operation:
-  - `where` filter in `filterStudentsByMinimumScore`
+- Missing marks are treated as `0` using null-safe defaults.
+- Negative marks are clamped to `0`.
+- Marks above allowed limits are clamped:
+  - `CA` max `30`
+  - `Attendance` max `10`
+  - `Assignment` max `10`
+  - `Exam` max `70`
+- Empty text fields fall back to safe values (`Unknown Student` / `N/A`).
+- Some malformed Excel style metadata is auto-repaired during import (for
+  files that trigger `custom numFmtId starts at 164...`).
+
+### Troubleshooting
+
+- If you see `Missing required column(s)`, check the first row headers.
+  The error message also prints all detected headers.
+- If PowerShell shows `>>`, your quote is not closed. Re-run with balanced
+  quotes:
+
+```powershell
+dart run bin/calculate.dart "C:\Users\YourName\Desktop\Book1.xlsx"
+```
