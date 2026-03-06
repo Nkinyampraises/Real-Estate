@@ -1,0 +1,16 @@
+{
+  "configVersion": 2,
+  "packages": [
+    {
+      "name": "assignment_3",
+      "rootUri": "../",
+      "packageUri": "lib/",
+      "languageVersion": "3.0"
+    }
+  ],
+  "generator": "pub",
+  "generatorVersion": "3.11.1",
+  "flutterRoot": "file:///C:/flutter",
+  "flutterVersion": "3.41.3",
+  "pubCache": "file:///C:/Users/MATRIX%20TECHNOLOGY/AppData/Local/Pub/Cache"
+}

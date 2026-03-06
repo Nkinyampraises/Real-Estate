@@ -1,0 +1,6 @@
+name: assignment_3
+description: Console app for average age filtering task.
+version: 1.0.0
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
