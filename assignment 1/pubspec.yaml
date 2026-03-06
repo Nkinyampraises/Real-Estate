@@ -1,0 +1,6 @@
+name: lamda_square
+description: A simple Dart console app demonstrating a custom higher-order function.
+version: 1.0.0
+
+environment:
+  sdk: ^3.11.0
