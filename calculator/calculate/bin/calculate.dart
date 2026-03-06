@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:calculate/calculate.dart';
 
-Future<void> main(List<String> arguments) async {
+void main(List<String> arguments) {
   // Help mode.
   if (arguments.isEmpty ||
       arguments.first == '-h' ||
@@ -37,18 +37,13 @@ Future<void> main(List<String> arguments) async {
         ? arguments[1]
         : buildDefaultOutputPath(inputPath);
     final students = readStudentRecords(inputPath);
-    final outputType = inferExportFileTypeFromPath(outputPath);
     final inputAbsolutePath = File(inputPath).absolute.path;
     final outputAbsolutePath = File(outputPath).absolute.path;
 
     // Show imported rows first, then generate and show graded rows.
     _printInputPreview(inputAbsolutePath, students);
-    await exportGradedFile(
-      outputPath: outputPath,
-      students: students,
-      type: outputType,
-    );
-    _printOutputPreview(outputAbsolutePath, students, outputType);
+    exportGradedWorkbook(outputPath: outputPath, students: students);
+    _printOutputPreview(outputAbsolutePath, students);
 
     stdout.writeln('Processed students: ${students.length}');
     stdout.writeln(
@@ -69,7 +64,7 @@ void _printUsage() {
     '  dart run bin/calculate.dart template [output_template.xlsx]',
   );
   stdout.writeln(
-    '  dart run bin/calculate.dart <input_students_file> [output_graded_file]',
+    '  dart run bin/calculate.dart <input_students.xlsx> [output_graded.xlsx]',
   );
   stdout.writeln('');
   stdout.writeln(
@@ -77,26 +72,21 @@ void _printUsage() {
   );
   stdout.writeln('  students.xlsx -> students_graded.xlsx');
   stdout.writeln('');
-  stdout.writeln('Accepted input formats: .xlsx, .csv, .html, .pdf');
-  stdout.writeln('Output format is inferred from output extension.');
-  stdout.writeln('Examples: graded.xlsx, graded.csv, graded.html, graded.pdf');
-  stdout.writeln('');
   stdout.writeln('Expected headers in the input sheet:');
   stdout.writeln(
     '  Name, Course, Matricule, Email, CA Marks, Attendance Marks, '
-    'Exam Marks',
+    'Assignment Marks, Exam Marks',
   );
-  stdout.writeln('  Assignment Marks is optional.');
 }
 
 void _printInputPreview(String inputPath, List<StudentRecord> students) {
-  stdout.writeln('INPUT FILE: $inputPath');
+  stdout.writeln('INPUT EXCEL FILE: $inputPath');
   if (students.isEmpty) {
     stdout.writeln('No student data rows were found in the uploaded file.');
     return;
   }
 
-  stdout.writeln('INPUT DATA:');
+  stdout.writeln('INPUT EXCEL DATA:');
   stdout.writeln(
     '#'.padRight(3) +
         'Name'.padRight(20) +
@@ -126,19 +116,14 @@ void _printInputPreview(String inputPath, List<StudentRecord> students) {
   }
 }
 
-void _printOutputPreview(
-  String outputPath,
-  List<StudentRecord> students,
-  ExportFileType outputType,
-) {
-  stdout.writeln('OUTPUT FILE: $outputPath');
-  stdout.writeln('OUTPUT FORMAT: ${outputType.label}');
+void _printOutputPreview(String outputPath, List<StudentRecord> students) {
+  stdout.writeln('OUTPUT EXCEL FILE: $outputPath');
   if (students.isEmpty) {
     stdout.writeln('No graded rows were generated.');
     return;
   }
 
-  stdout.writeln('OUTPUT DATA:');
+  stdout.writeln('OUTPUT EXCEL DATA:');
   stdout.writeln(
     '#'.padRight(3) +
         'Name'.padRight(20) +

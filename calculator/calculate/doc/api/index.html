@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, user-scalable=no">
+  <meta name="description" content="calculate API docs, for the Dart programming language.">
+  <title>calculate - Dart API docs</title>
+
+
+  
+  <link rel="preconnect" href="https://fonts.gstatic.com">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:ital,wght@0,300;0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet">
+  
+  <link rel="stylesheet" href="static-assets/github.css?v1">
+  <link rel="stylesheet" href="static-assets/styles.css?v1">
+  <link rel="icon" href="static-assets/favicon.png?v1">
+  
+</head>
+
+<body data-base-href="" data-using-base-href="false" class="light-theme">
+<div id="overlay-under-drawer"></div>
+<header id="title">
+  <span id="sidenav-left-toggle" class="material-symbols-outlined" role="button" tabindex="0">menu</span>
+  <ol class="breadcrumbs gt-separated dark hidden-xs">
+    <li class="self-crumb">calculate package</li>
+  </ol>
+  <div class="self-name">calculate</div>
+  <form class="search navbar-right" role="search">
+    <input type="text" id="search-box" autocomplete="off" disabled class="form-control typeahead" placeholder="Loading search...">
+  </form>
+  <button class="toggle" id="theme-button" title="Toggle between light and dark mode" aria-label="Light and dark mode toggle">
+    <span id="dark-theme-button" class="material-symbols-outlined" aria-hidden="true">
+      dark_mode
+    </span>
+    <span id="light-theme-button" class="material-symbols-outlined" aria-hidden="true">
+      light_mode
+    </span>
+  </button>
+</header>
+<main>
+  <div id="dartdoc-main-content" class="main-content">
+      
+<section class="desc markdown">
+  <h2 id="student-grade-calculator-dart">Student Grade Calculator (Dart)</h2>
+<p>This CLI app helps you:</p>
+<ol>
+<li>Export a fillable Excel template.</li>
+<li>Import your filled student sheet.</li>
+<li>Generate a new Excel file with calculated grade number (out of 100) and
+grade letter.</li>
+</ol>
+<h3 id="required-columns">Required Columns</h3>
+<p>The input Excel sheet must contain these fields in the first row:</p>
+<ul>
+<li>Name</li>
+<li>Course</li>
+<li>Matricule</li>
+<li>Email</li>
+<li>CA Marks</li>
+<li>Attendance Marks</li>
+<li>Assignment Marks</li>
+<li>Exam Marks</li>
+</ul>
+<p>Header matching is flexible. Common variations and typos are accepted, for
+example:</p>
+<ul>
+<li><code>Matricle</code> (for <code>Matricule</code>)</li>
+<li><code>Attendance marks</code></li>
+<li><code>Asignment marks</code></li>
+<li><code>Exam /70</code>, <code>CA /30</code>, <code>Assignment /10</code></li>
+</ul>
+<h3 id="commands">Commands</h3>
+<p>Create a template:</p>
+<pre class="language-bash"><code class="language-bash">dart run bin/calculate.dart template ./student_template.xlsx
+</code></pre>
+<p>You can also create template with default name in current folder:</p>
+<pre class="language-bash"><code class="language-bash">dart run bin/calculate.dart template
+</code></pre>
+<p>Process a filled sheet and auto-create output next to it:</p>
+<pre class="language-bash"><code class="language-bash">dart run bin/calculate.dart "C:/path/from/your/computer/students.xlsx"
+</code></pre>
+<p>Process with explicit output path:</p>
+<pre class="language-bash"><code class="language-bash">dart run bin/calculate.dart ./students.xlsx ./graded_students.xlsx
+</code></pre>
+<h3 id="terminal-output">Terminal Output</h3>
+<p>When you process a file, the app prints:</p>
+<ul>
+<li><code>INPUT EXCEL FILE</code> absolute path</li>
+<li><code>INPUT EXCEL DATA</code> (rows from the imported workbook)</li>
+<li><code>OUTPUT EXCEL FILE</code> absolute path</li>
+<li><code>OUTPUT EXCEL DATA</code> (rows with computed coursework, grade number, grade letter)</li>
+<li>a final completion line: <code>Process complete. You can close this terminal now.</code></li>
+</ul>
+<h3 id="grade-logic">Grade Logic</h3>
+<ul>
+<li>Coursework Raw = <code>CA Marks + Attendance Marks + Assignment Marks</code> (out of <code>50</code>)</li>
+<li>Coursework Scaled = <code>(Coursework Raw / 50) * 30</code> (out of <code>30</code>)</li>
+<li>Grade Number = <code>Coursework Scaled + Exam Marks</code> (out of <code>100</code>)</li>
+<li>Letter grade:
+<ul>
+<li><code>A</code> for <code>&gt;= 70</code></li>
+<li><code>B</code> for <code>&gt;= 60</code></li>
+<li><code>C</code> for <code>&gt;= 50</code></li>
+<li><code>D</code> for <code>&gt;= 45</code></li>
+<li><code>E</code> for <code>&gt;= 40</code></li>
+<li><code>F</code> for <code>&lt; 40</code></li>
+</ul>
+</li>
+</ul>
+<h3 id="null-safety--edge-cases">Null Safety / Edge Cases</h3>
+<ul>
+<li>Missing marks are treated as <code>0</code> using null-safe defaults.</li>
+<li>Negative marks are clamped to <code>0</code>.</li>
+<li>Marks above allowed limits are clamped:
+<ul>
+<li><code>CA</code> max <code>30</code></li>
+<li><code>Attendance</code> max <code>10</code></li>
+<li><code>Assignment</code> max <code>10</code></li>
+<li><code>Exam</code> max <code>70</code></li>
+</ul>
+</li>
+<li>Empty text fields fall back to safe values (<code>Unknown Student</code> / <code>N/A</code>).</li>
+<li>Some malformed Excel style metadata is auto-repaired during import (for
+files that trigger <code>custom numFmtId starts at 164...</code>).</li>
+</ul>
+<h3 id="troubleshooting">Troubleshooting</h3>
+<ul>
+<li>If you see <code>Missing required column(s)</code>, check the first row headers.
+The error message also prints all detected headers.</li>
+<li>If PowerShell shows <code>&gt;&gt;</code>, your quote is not closed. Re-run with balanced
+quotes:</li>
+</ul>
+<pre class="language-powershell"><code class="language-powershell">dart run bin/calculate.dart "C:\Users\YourName\Desktop\Book1.xlsx"
+</code></pre>
+</section>
+
+
+      <section class="summary">
+          <h2>Libraries</h2>
+        <dl>
+          <dt id="calculate">
+  <span class="name"><a href="calculate/">calculate</a></span> 
+
+</dt>
+<dd>
+</dd>
+
+        </dl>
+      </section>
+  </div> <!-- /.main-content -->
+  <div id="dartdoc-sidebar-left" class="sidebar sidebar-offcanvas-left">
+    <!-- The search input and breadcrumbs below are only responsively visible at low resolutions. -->
+<header id="header-search-sidebar" class="hidden-l">
+  <form class="search-sidebar" role="search">
+    <input type="text" id="search-sidebar" autocomplete="off" disabled class="form-control typeahead" placeholder="Loading search...">
+  </form>
+</header>
+<ol class="breadcrumbs gt-separated dark hidden-l" id="sidebar-nav">
+    <li class="self-crumb">calculate package</li>
+</ol>
+
+    <h5 class="hidden-xs"><span class="package-name">calculate</span> <span class="package-kind">package</span></h5>
+    <ol>
+      <li class="section-title">Libraries</li>
+      <li><a href="calculate/">calculate</a></li>
+</ol>
+
+  </div>
+  <div id="dartdoc-sidebar-right" class="sidebar sidebar-offcanvas-right">
+  </div>
+</main>
+<footer>
+  <span class="no-break">
+    calculate
+      1.0.0
+  </span>
+  
+</footer>
+
+
+<script src="static-assets/highlight.pack.js?v1"></script>
+<script src="static-assets/docs.dart.js"></script>
+
+</body>
+</html>
+
