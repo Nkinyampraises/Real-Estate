@@ -1,0 +1,6 @@
+name: assignment_2
+description: Simple Dart console app for collection transformation task.
+version: 1.0.0
+
+environment:
+  sdk: ^3.11.0
