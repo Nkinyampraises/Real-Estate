@@ -1,17 +1,18 @@
-# real_estate_secure
+# Real-Estate-Secure
 
-A new Flutter project.
+Monorepo for the Real-Estate-Secure platform. The mobile Flutter app lives under `mobile_app/`, while backend, database, docs, and infrastructure live in their own top-level folders.
 
-## Getting Started
+## Structure
+- `mobile_app/` Flutter mobile application (Android project is under `mobile_app/android`).
+- `backend/` Backend API services and supporting libraries.
+- `database/` PostgreSQL migrations, seed data, and schema docs.
+- `docs/` Architecture notes and API references.
+- `infra/` Infrastructure and deployment assets.
+- `scripts/` Automation and developer tooling.
+- `shared/` Shared contracts and utilities.
 
-This project is a starting point for a Flutter application.
+## Stack
 
-A few resources to get you started if this is your first Flutter project:
-
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+- Dart backend (Shelf + postgres client)
+- PostgreSQL for relational data and compliance logs
+- Flutter mobile app
