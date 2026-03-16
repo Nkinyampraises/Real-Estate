@@ -1,0 +1,25 @@
+# OS and editor files
+.DS_Store
+Thumbs.db
+**/.idea/
+**/*.iml
+**/.vscode/
+
+# Dart and Flutter
+**/.dart_tool/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/.packages
+**/build/
+/android/
+
+# Android local config
+**/local.properties
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log

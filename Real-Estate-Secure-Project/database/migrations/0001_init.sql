@@ -1,0 +1,1369 @@
+BEGIN;
+
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
+-- Enums
+CREATE TYPE user_role_type AS ENUM (
+  'buyer',
+  'seller',
+  'landlord',
+  'tenant',
+  'lawyer',
+  'surveyor',
+  'agent',
+  'admin',
+  'super_admin'
+);
+
+CREATE TYPE address_type AS ENUM (
+  'residential',
+  'legal',
+  'billing',
+  'shipping'
+);
+
+CREATE TYPE identity_document_type AS ENUM (
+  'national_id',
+  'passport',
+  'driver_license',
+  'residence_permit'
+);
+
+CREATE TYPE verification_status AS ENUM (
+  'pending',
+  'verified',
+  'rejected',
+  'expired'
+);
+
+CREATE TYPE verification_method AS ENUM (
+  'manual',
+  'automated',
+  'hybrid'
+);
+
+CREATE TYPE business_type AS ENUM (
+  'agency',
+  'law_firm',
+  'development_company',
+  'individual'
+);
+
+CREATE TYPE property_type AS ENUM (
+  'land',
+  'house',
+  'apartment',
+  'commercial',
+  'industrial',
+  'agricultural'
+);
+
+CREATE TYPE listing_type AS ENUM ('sale', 'rent', 'lease');
+
+CREATE TYPE property_status AS ENUM (
+  'draft',
+  'pending',
+  'active',
+  'sold',
+  'rented',
+  'expired',
+  'rejected',
+  'archived'
+);
+
+CREATE TYPE property_condition AS ENUM (
+  'new',
+  'good',
+  'renovation_needed'
+);
+
+CREATE TYPE location_type AS ENUM (
+  'primary',
+  'additional',
+  'boundary'
+);
+
+CREATE TYPE property_document_type AS ENUM (
+  'land_title',
+  'survey_plan',
+  'tax_clearance',
+  'non_encumbrance',
+  'sale_agreement',
+  'building_permit',
+  'certificate_of_habitation',
+  'valuation_report'
+);
+
+CREATE TYPE property_document_access AS ENUM (
+  'public',
+  'verified_only',
+  'lawyer_only'
+);
+
+CREATE TYPE property_image_type AS ENUM (
+  'exterior',
+  'interior',
+  'kitchen',
+  'bathroom',
+  'bedroom',
+  'living',
+  'drone',
+  'floor_plan',
+  'virtual_tour'
+);
+
+CREATE TYPE watermark_status AS ENUM ('pending', 'applied', 'skipped');
+
+CREATE TYPE property_video_type AS ENUM (
+  'tour',
+  'drone',
+  'walkthrough',
+  'interview'
+);
+
+CREATE TYPE verification_request_type AS ENUM (
+  'initial',
+  'appeal',
+  'update'
+);
+
+CREATE TYPE request_status AS ENUM (
+  'pending',
+  'in_review',
+  'approved',
+  'rejected',
+  'escalated'
+);
+
+CREATE TYPE request_priority AS ENUM ('low', 'normal', 'high', 'urgent');
+
+CREATE TYPE verification_step_type AS ENUM (
+  'document_check',
+  'ownership_verification',
+  'site_visit',
+  'legal_review'
+);
+
+CREATE TYPE verification_step_status AS ENUM (
+  'pending',
+  'in_progress',
+  'completed',
+  'skipped',
+  'blocked'
+);
+
+CREATE TYPE transaction_type AS ENUM ('sale', 'rent', 'lease');
+
+CREATE TYPE transaction_status AS ENUM (
+  'initiated',
+  'pending_deposit',
+  'deposited',
+  'documents_pending',
+  'documents_verified',
+  'inspection_period',
+  'lawyer_approval',
+  'completed',
+  'disputed',
+  'cancelled',
+  'refunded'
+);
+
+CREATE TYPE escrow_account_status AS ENUM (
+  'active',
+  'held',
+  'released',
+  'closed'
+);
+
+CREATE TYPE escrow_transaction_type AS ENUM (
+  'deposit',
+  'withdrawal',
+  'hold',
+  'release',
+  'refund',
+  'fee'
+);
+
+CREATE TYPE escrow_transaction_status AS ENUM (
+  'pending',
+  'completed',
+  'failed',
+  'cancelled'
+);
+
+CREATE TYPE payment_method_type AS ENUM (
+  'momo',
+  'orange',
+  'bank_card',
+  'bank_transfer'
+);
+
+CREATE TYPE payment_provider AS ENUM (
+  'mtn',
+  'orange',
+  'visa',
+  'mastercard',
+  'ecobank',
+  'sgc'
+);
+
+CREATE TYPE invoice_type AS ENUM (
+  'platform_fee',
+  'legal_fee',
+  'subscription',
+  'deposit'
+);
+
+CREATE TYPE invoice_status AS ENUM (
+  'draft',
+  'pending',
+  'paid',
+  'overdue',
+  'cancelled',
+  'refunded'
+);
+
+CREATE TYPE subscription_status AS ENUM (
+  'active',
+  'pending',
+  'expired',
+  'cancelled',
+  'suspended'
+);
+
+CREATE TYPE billing_cycle AS ENUM ('monthly', 'yearly');
+
+CREATE TYPE subscription_invoice_status AS ENUM (
+  'pending',
+  'paid',
+  'failed',
+  'refunded'
+);
+
+CREATE TYPE review_status AS ENUM (
+  'pending',
+  'published',
+  'rejected',
+  'hidden'
+);
+
+CREATE TYPE conversation_type AS ENUM (
+  'direct',
+  'group',
+  'property',
+  'transaction'
+);
+
+CREATE TYPE conversation_role AS ENUM ('participant', 'admin', 'lawyer');
+
+CREATE TYPE message_type AS ENUM (
+  'text',
+  'image',
+  'file',
+  'offer',
+  'location',
+  'contact'
+);
+
+CREATE TYPE message_status_type AS ENUM ('sent', 'delivered', 'read');
+
+CREATE TYPE notification_frequency AS ENUM (
+  'realtime',
+  'daily',
+  'weekly'
+);
+
+CREATE TYPE verification_action AS ENUM (
+  'submitted',
+  'viewed',
+  'verified',
+  'rejected',
+  'appealed'
+);
+
+CREATE TYPE verification_log_type AS ENUM (
+  'manual',
+  'automated',
+  'expert'
+);
+
+CREATE TYPE dispute_type AS ENUM (
+  'document_fraud',
+  'title_dispute',
+  'payment_dispute',
+  'property_condition',
+  'other'
+);
+
+CREATE TYPE dispute_status AS ENUM (
+  'open',
+  'investigating',
+  'resolved',
+  'escalated',
+  'closed'
+);
+
+CREATE TYPE dispute_priority AS ENUM ('low', 'medium', 'high', 'urgent');
+
+-- Core user management tables
+CREATE TABLE users (
+  id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  uuid UUID UNIQUE NOT NULL DEFAULT gen_random_uuid(),
+  email VARCHAR(255) UNIQUE NOT NULL,
+  phone_number VARCHAR(20) UNIQUE NOT NULL,
+  phone_country_code VARCHAR(5) NOT NULL DEFAULT '+237',
+  password_hash VARCHAR(255) NOT NULL,
+  first_name VARCHAR(100) NOT NULL,
+  last_name VARCHAR(100) NOT NULL,
+  middle_name VARCHAR(100),
+  date_of_birth DATE NOT NULL,
+  nationality VARCHAR(50) NOT NULL DEFAULT 'Cameroonian',
+  profile_image_url TEXT,
+  bio TEXT,
+  preferred_language VARCHAR(10) NOT NULL DEFAULT 'en',
+  two_factor_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+  two_factor_secret VARCHAR(255),
+  email_verified_at TIMESTAMPTZ,
+  phone_verified_at TIMESTAMPTZ,
+  last_login_at TIMESTAMPTZ,
+  last_login_ip INET,
+  failed_login_attempts SMALLINT NOT NULL DEFAULT 0,
+  locked_until TIMESTAMPTZ,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  is_suspended BOOLEAN NOT NULL DEFAULT FALSE,
+  suspension_reason TEXT,
+  terms_accepted_at TIMESTAMPTZ NOT NULL,
+  privacy_accepted_at TIMESTAMPTZ NOT NULL,
+  marketing_consent BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  deleted_at TIMESTAMPTZ
+);
+
+CREATE INDEX idx_users_email ON users (email);
+CREATE INDEX idx_users_phone ON users (phone_number);
+CREATE INDEX idx_users_status_created ON users (is_active, created_at);
+
+CREATE TABLE user_roles (
+  id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  user_id BIGINT NOT NULL REFERENCES users (id) ON DELETE RESTRICT,
+  role user_role_type NOT NULL,
+  is_primary BOOLEAN NOT NULL DEFAULT FALSE,
+  verified_at TIMESTAMPTZ,
+  verified_by BIGINT REFERENCES users (id) ON DELETE RESTRICT,
+  expires_at TIMESTAMPTZ,
+  metadata JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (user_id, role)
+);
+
+CREATE TABLE user_addresses (
+  id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  user_id BIGINT NOT NULL REFERENCES users (id) ON DELETE RESTRICT,
+  address_type address_type NOT NULL,
+  is_primary BOOLEAN NOT NULL DEFAULT FALSE,
+  country VARCHAR(50) NOT NULL DEFAULT 'Cameroon',
+  region VARCHAR(100) NOT NULL,
+  department VARCHAR(100),
+  city VARCHAR(100) NOT NULL,
+  district VARCHAR(100),
+  postal_code VARCHAR(20),
+  street_address VARCHAR(255) NOT NULL,
+  landmark VARCHAR(255),
+  latitude NUMERIC(10, 8),
+  longitude NUMERIC(11, 8),
+  property_tax_region VARCHAR(50),
+  verified_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- KYC and verification tables
+CREATE TABLE identity_documents (
+  id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  user_id BIGINT NOT NULL REFERENCES users (id) ON DELETE RESTRICT,
+  document_type identity_document_type NOT NULL,
+  document_number VARCHAR(100) NOT NULL,
+  issuing_country VARCHAR(50) NOT NULL DEFAULT 'Cameroon',
+  issuing_authority VARCHAR(100),
+  issue_date DATE NOT NULL,
+  expiry_date DATE,
+  first_name VARCHAR(100) NOT NULL,
+  last_name VARCHAR(100) NOT NULL,
+  date_of_birth DATE NOT NULL,
+  front_image_path TEXT NOT NULL,
+  back_image_path TEXT,
+  portrait_image_path TEXT,
+  verification_status verification_status NOT NULL DEFAULT 'pending',
+  verification_method verification_method,
+  verified_by BIGINT REFERENCES users (id) ON DELETE RESTRICT,
+  verified_at TIMESTAMPTZ,
+  rejection_reason TEXT,
+  rejection_details JSONB,
+  risk_score NUMERIC(3, 2),
+  fraud_check_id VARCHAR(100),
+  metadata JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (document_type, document_number)
+);
+
+CREATE TABLE business_verifications (
+  id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  user_id BIGINT NOT NULL REFERENCES users (id) ON DELETE RESTRICT,
+  business_name VARCHAR(255) NOT NULL,
+  business_registration_number VARCHAR(100) NOT NULL,
+  tax_id_number VARCHAR(100) NOT NULL,
+  business_type business_type NOT NULL,
+  registration_certificate_path TEXT NOT NULL,
+  tax_clearance_path TEXT NOT NULL,
+  articles_of_association_path TEXT,
+  business_license_path TEXT,
+  registered_address TEXT NOT NULL,
+  date_of_registration DATE NOT NULL,
+  verification_status verification_status NOT NULL DEFAULT 'pending',
+  verified_by BIGINT REFERENCES users (id) ON DELETE RESTRICT,
+  verified_at TIMESTAMPTZ,
+  expiry_date DATE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE biometric_registrations (
+  id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  user_id BIGINT NOT NULL REFERENCES users (id) ON DELETE RESTRICT,
+  credential_id VARCHAR(255) UNIQUE NOT NULL,
+  public_key TEXT NOT NULL,
+  sign_count BIGINT NOT NULL DEFAULT 0,
+  device_name VARCHAR(255),
+  device_type VARCHAR(50),
+  last_used_at TIMESTAMPTZ,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Property management tables
+CREATE TABLE properties (
+  id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  uuid UUID UNIQUE NOT NULL DEFAULT gen_random_uuid(),
+  owner_id BIGINT NOT NULL REFERENCES users (id) ON DELETE RESTRICT,
+  listed_by_id BIGINT REFERENCES users (id) ON DELETE RESTRICT,
+  property_type property_type NOT NULL,
+  listing_type listing_type NOT NULL,
+  title VARCHAR(255) NOT NULL,
+  description TEXT NOT NULL,
+  short_description VARCHAR(500),
+  property_status property_status NOT NULL DEFAULT 'draft',
+  verification_status verification_status NOT NULL DEFAULT 'pending',
+  price NUMERIC(15, 2) NOT NULL CHECK (price >= 0),
+  price_sqft NUMERIC(10, 2) CHECK (price_sqft >= 0),
+  platform_fee_percentage NUMERIC(5, 2) NOT NULL DEFAULT 5.00 CHECK (platform_fee_percentage >= 0),
+  platform_fee_amount NUMERIC(15, 2) CHECK (platform_fee_amount >= 0),
+  total_price_buyer NUMERIC(15, 2) CHECK (total_price_buyer >= 0),
+  currency CHAR(3) NOT NULL DEFAULT 'XAF',
+  land_size NUMERIC(10, 2),
+  land_size_unit VARCHAR(10) NOT NULL DEFAULT 'sqm',
+  build_size NUMERIC(10, 2),
+  bedrooms SMALLINT,
+  bathrooms NUMERIC(3, 1),
+  floor_count SMALLINT,
+  year_built SMALLINT,
+  condition property_condition,
+  furnished BOOLEAN NOT NULL DEFAULT FALSE,
+  amenities JSONB,
+  utilities_included JSONB,
+  zoning_type VARCHAR(100),
+  land_use VARCHAR(100),
+  is_featured BOOLEAN NOT NULL DEFAULT FALSE,
+  featured_until TIMESTAMPTZ,
+  view_count INTEGER NOT NULL DEFAULT 0,
+  unique_view_count INTEGER NOT NULL DEFAULT 0,
+  inquiry_count INTEGER NOT NULL DEFAULT 0,
+  last_viewed_at TIMESTAMPTZ,
+  published_at TIMESTAMPTZ,
+  expires_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  deleted_at TIMESTAMPTZ
+);
+
+CREATE INDEX idx_properties_status_type ON properties (property_status, property_type);
+CREATE INDEX idx_properties_price ON properties (price);
+CREATE INDEX idx_properties_owner ON properties (owner_id);
+CREATE INDEX idx_properties_verification ON properties (verification_status);
+
+CREATE TABLE property_locations (
+  id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  property_id BIGINT NOT NULL REFERENCES properties (id) ON DELETE RESTRICT,
+  location_type location_type NOT NULL DEFAULT 'primary',
+  country VARCHAR(50) NOT NULL DEFAULT 'Cameroon',
+  region VARCHAR(100) NOT NULL,
+  department VARCHAR(100) NOT NULL,
+  city VARCHAR(100) NOT NULL,
+  district VARCHAR(100),
+  neighborhood VARCHAR(100),
+  street_address VARCHAR(255),
+  landmark VARCHAR(255),
+  latitude NUMERIC(10, 8) NOT NULL,
+  longitude NUMERIC(11, 8) NOT NULL,
+  geohash VARCHAR(12),
+  google_place_id VARCHAR(255),
+  cadastral_reference VARCHAR(100),
+  lot_number VARCHAR(50),
+  block_number VARCHAR(50),
+  plot_number VARCHAR(50),
+  is_public BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX spatial_idx_property_locations ON property_locations (latitude, longitude);
+CREATE INDEX idx_property_locations_geohash ON property_locations (geohash);
+CREATE INDEX idx_property_locations_region_city ON property_locations (region, city);
+
+CREATE TABLE property_documents (
+  id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  property_id BIGINT NOT NULL REFERENCES properties (id) ON DELETE RESTRICT,
+  document_type property_document_type NOT NULL,
+  document_number VARCHAR(100) NOT NULL,
+  document_title VARCHAR(255) NOT NULL,
+  issuing_authority VARCHAR(255) NOT NULL,
+  issue_date DATE NOT NULL,
+  expiry_date DATE,
+  file_path TEXT NOT NULL,
+  file_hash CHAR(64) NOT NULL,
+  file_size INTEGER NOT NULL,
+  mime_type VARCHAR(100) NOT NULL,
+  is_verified BOOLEAN NOT NULL DEFAULT FALSE,
+  verified_by BIGINT REFERENCES users (id) ON DELETE RESTRICT,
+  verified_at TIMESTAMPTZ,
+  verification_notes TEXT,
+  rejection_reason TEXT,
+  is_public BOOLEAN NOT NULL DEFAULT FALSE,
+  access_level property_document_access NOT NULL DEFAULT 'verified_only',
+  watermark_text TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (document_type, document_number)
+);
+
+CREATE TABLE property_document_versions (
+  id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  document_id BIGINT NOT NULL REFERENCES property_documents (id) ON DELETE RESTRICT,
+  version_number SMALLINT NOT NULL,
+  file_path TEXT NOT NULL,
+  file_hash CHAR(64) NOT NULL,
+  file_size INTEGER NOT NULL,
+  mime_type VARCHAR(100) NOT NULL,
+  uploaded_by_id BIGINT REFERENCES users (id) ON DELETE RESTRICT,
+  is_current BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (document_id, version_number)
+);
+
+CREATE UNIQUE INDEX idx_property_document_versions_current
+  ON property_document_versions (document_id)
+  WHERE is_current;
+
+CREATE OR REPLACE FUNCTION set_document_version_current()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.is_current THEN
+    UPDATE property_document_versions
+    SET is_current = FALSE
+    WHERE document_id = NEW.document_id;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER property_document_versions_current
+BEFORE INSERT OR UPDATE ON property_document_versions
+FOR EACH ROW EXECUTE FUNCTION set_document_version_current();
+
+CREATE TABLE property_images (
+  id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  property_id BIGINT NOT NULL REFERENCES properties (id) ON DELETE RESTRICT,
+  image_type property_image_type NOT NULL DEFAULT 'exterior',
+  sort_order SMALLINT NOT NULL DEFAULT 0,
+  is_primary BOOLEAN NOT NULL DEFAULT FALSE,
+  title VARCHAR(255),
+  description TEXT,
+  file_path_original TEXT NOT NULL,
+  file_path_large TEXT,
+  file_path_medium TEXT,
+  file_path_small TEXT,
+  file_path_thumbnail TEXT,
+  file_hash CHAR(64) NOT NULL,
+  file_size INTEGER NOT NULL,
+  width INTEGER,
+  height INTEGER,
+  mime_type VARCHAR(100) NOT NULL,
+  gps_latitude NUMERIC(10, 8),
+  gps_longitude NUMERIC(11, 8),
+  taken_at TIMESTAMPTZ,
+  is_verified BOOLEAN NOT NULL DEFAULT FALSE,
+  ai_moderation_score NUMERIC(3, 2),
+  ai_moderation_flags JSONB,
+  watermark_status watermark_status NOT NULL DEFAULT 'pending',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE property_videos (
+  id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  property_id BIGINT NOT NULL REFERENCES properties (id) ON DELETE RESTRICT,
+  title VARCHAR(255) NOT NULL,
+  description TEXT,
+  video_type property_video_type NOT NULL DEFAULT 'tour',
+  file_path TEXT NOT NULL,
+  thumbnail_path TEXT,
+  duration INTEGER,
+  file_size BIGINT NOT NULL,
+  mime_type VARCHAR(100) NOT NULL,
+  youtube_id VARCHAR(50),
+  vimeo_id VARCHAR(50),
+  is_public BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Legal and verification tables
+CREATE TABLE land_titles (
+  id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  property_id BIGINT NOT NULL REFERENCES properties (id) ON DELETE RESTRICT,
+  title_number VARCHAR(100) UNIQUE NOT NULL,
+  volume_number VARCHAR(50),
+  folio_number VARCHAR(50),
+  registration_date DATE NOT NULL,
+  registration_office VARCHAR(255) NOT NULL,
+  registrar_name VARCHAR(255) NOT NULL,
+  prior_title_number VARCHAR(100),
+  land_area_hectares NUMERIC(15, 5) NOT NULL CHECK (land_area_hectares >= 0),
+  land_area_sqm NUMERIC(15, 2) NOT NULL CHECK (land_area_sqm >= 0),
+  boundaries_description TEXT NOT NULL,
+  cadastral_section VARCHAR(50),
+  cadastral_plan_number VARCHAR(100),
+  surveyor_name VARCHAR(255),
+  surveyor_certification VARCHAR(100),
+  previous_owners JSONB,
+  current_owner_name VARCHAR(255) NOT NULL,
+  owner_id BIGINT NOT NULL REFERENCES users (id) ON DELETE RESTRICT,
+  encumbrances JSONB,
+  is_original BOOLEAN NOT NULL DEFAULT TRUE,
+  document_hash CHAR(64) NOT NULL,
+  blockchain_tx_id VARCHAR(255),
+  verification_status verification_status NOT NULL DEFAULT 'pending',
+  verified_by BIGINT REFERENCES users (id) ON DELETE RESTRICT,
+  verified_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE property_verification_requests (
+  id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  property_id BIGINT NOT NULL REFERENCES properties (id) ON DELETE RESTRICT,
+  requester_id BIGINT NOT NULL REFERENCES users (id) ON DELETE RESTRICT,
+  assigned_to_id BIGINT REFERENCES users (id) ON DELETE RESTRICT,
+  request_type verification_request_type NOT NULL,
+  status request_status NOT NULL DEFAULT 'pending',
+  priority request_priority NOT NULL DEFAULT 'normal',
+  submitted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  started_at TIMESTAMPTZ,
+  completed_at TIMESTAMPTZ,
+  review_deadline TIMESTAMPTZ,
+  reviewer_notes TEXT,
+  rejection_reason TEXT,
+  rejection_category VARCHAR(100),
+  appeal_count SMALLINT NOT NULL DEFAULT 0,
+  escalation_level SMALLINT NOT NULL DEFAULT 0,
+  escalated_to_id BIGINT REFERENCES users (id) ON DELETE RESTRICT,
+  metadata JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE property_verification_steps (
+  id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  request_id BIGINT NOT NULL REFERENCES property_verification_requests (id) ON DELETE RESTRICT,
+  step_name VARCHAR(100) NOT NULL,
+  step_type verification_step_type NOT NULL,
+  status verification_step_status NOT NULL DEFAULT 'pending',
+  assigned_to_id BIGINT REFERENCES users (id) ON DELETE RESTRICT,
+  started_at TIMESTAMPTZ,
+  completed_at TIMESTAMPTZ,
+  notes TEXT,
+  attachments JSONB,
+  duration_minutes INTEGER,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Transactions and escrow tables
+CREATE TABLE transactions (
+  id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  uuid UUID UNIQUE NOT NULL DEFAULT gen_random_uuid(),
+  transaction_number VARCHAR(50) UNIQUE NOT NULL,
+  property_id BIGINT NOT NULL REFERENCES properties (id) ON DELETE RESTRICT,
+  buyer_id BIGINT NOT NULL REFERENCES users (id) ON DELETE RESTRICT,
+  seller_id BIGINT NOT NULL REFERENCES users (id) ON DELETE RESTRICT,
+  lawyer_id BIGINT REFERENCES users (id) ON DELETE RESTRICT,
+  transaction_type transaction_type NOT NULL,
+  transaction_status transaction_status NOT NULL DEFAULT 'initiated',
+  property_price NUMERIC(15, 2) NOT NULL CHECK (property_price >= 0),
+  platform_fee_percentage NUMERIC(5, 2) NOT NULL DEFAULT 5.00 CHECK (platform_fee_percentage >= 0),
+  platform_fee_amount NUMERIC(15, 2) NOT NULL CHECK (platform_fee_amount >= 0),
+  lawyer_fee NUMERIC(15, 2) CHECK (lawyer_fee >= 0),
+  legal_fees NUMERIC(15, 2) CHECK (legal_fees >= 0),
+  total_amount NUMERIC(15, 2) NOT NULL CHECK (total_amount >= 0),
+  currency CHAR(3) NOT NULL DEFAULT 'XAF',
+  deposit_amount NUMERIC(15, 2) CHECK (deposit_amount >= 0),
+  deposit_due_date TIMESTAMPTZ,
+  deposit_received_date TIMESTAMPTZ,
+  completion_date TIMESTAMPTZ,
+  inspection_period_days SMALLINT NOT NULL DEFAULT 2,
+  inspection_end_date TIMESTAMPTZ,
+  dispute_deadline TIMESTAMPTZ,
+  cancellation_reason TEXT,
+  cancellation_by_id BIGINT REFERENCES users (id) ON DELETE RESTRICT,
+  metadata JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_transactions_buyer ON transactions (buyer_id);
+CREATE INDEX idx_transactions_seller ON transactions (seller_id);
+CREATE INDEX idx_transactions_status ON transactions (transaction_status);
+CREATE INDEX idx_transactions_created ON transactions (created_at);
+
+CREATE TABLE escrow_accounts (
+  id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  transaction_id BIGINT NOT NULL REFERENCES transactions (id) ON DELETE RESTRICT,
+  account_number VARCHAR(50) UNIQUE NOT NULL,
+  account_status escrow_account_status NOT NULL DEFAULT 'active',
+  current_balance NUMERIC(15, 2) NOT NULL DEFAULT 0.00 CHECK (current_balance >= 0),
+  total_deposited NUMERIC(15, 2) NOT NULL DEFAULT 0.00 CHECK (total_deposited >= 0),
+  total_withdrawn NUMERIC(15, 2) NOT NULL DEFAULT 0.00 CHECK (total_withdrawn >= 0),
+  held_balance NUMERIC(15, 2) NOT NULL DEFAULT 0.00 CHECK (held_balance >= 0),
+  available_balance NUMERIC(15, 2) NOT NULL DEFAULT 0.00 CHECK (available_balance >= 0),
+  last_transaction_at TIMESTAMPTZ,
+  release_conditions JSONB,
+  release_date TIMESTAMPTZ,
+  released_to_id BIGINT REFERENCES users (id) ON DELETE RESTRICT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE escrow_transactions (
+  id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  escrow_account_id BIGINT NOT NULL REFERENCES escrow_accounts (id) ON DELETE RESTRICT,
+  transaction_reference VARCHAR(100) UNIQUE NOT NULL,
+  transaction_type escrow_transaction_type NOT NULL,
+  amount NUMERIC(15, 2) NOT NULL CHECK (amount >= 0),
+  balance_before NUMERIC(15, 2) NOT NULL CHECK (balance_before >= 0),
+  balance_after NUMERIC(15, 2) NOT NULL CHECK (balance_after >= 0),
+  payment_method_id BIGINT,
+  payment_provider VARCHAR(50) NOT NULL,
+  provider_reference VARCHAR(255),
+  status escrow_transaction_status NOT NULL DEFAULT 'pending',
+  description TEXT,
+  initiated_by_id BIGINT REFERENCES users (id) ON DELETE RESTRICT,
+  approved_by_id BIGINT REFERENCES users (id) ON DELETE RESTRICT,
+  approved_at TIMESTAMPTZ,
+  failure_reason TEXT,
+  metadata JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE payment_methods (
+  id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  user_id BIGINT NOT NULL REFERENCES users (id) ON DELETE RESTRICT,
+  method_type payment_method_type NOT NULL,
+  provider payment_provider NOT NULL,
+  account_name VARCHAR(255),
+  account_number VARCHAR(100),
+  phone_number VARCHAR(20),
+  card_last_four CHAR(4),
+  card_expiry_month CHAR(2),
+  card_expiry_year CHAR(4),
+  bank_name VARCHAR(100),
+  bank_code VARCHAR(20),
+  is_default BOOLEAN NOT NULL DEFAULT FALSE,
+  is_verified BOOLEAN NOT NULL DEFAULT FALSE,
+  verified_at TIMESTAMPTZ,
+  billing_address_id BIGINT REFERENCES user_addresses (id) ON DELETE RESTRICT,
+  payment_token VARCHAR(255),
+  provider_customer_id VARCHAR(255),
+  metadata JSONB,
+  last_used_at TIMESTAMPTZ,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE escrow_transactions
+  ADD CONSTRAINT escrow_transactions_payment_method_id_fkey
+  FOREIGN KEY (payment_method_id) REFERENCES payment_methods (id) ON DELETE RESTRICT;
+
+CREATE TABLE invoices (
+  id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  invoice_number VARCHAR(50) UNIQUE NOT NULL,
+  user_id BIGINT NOT NULL REFERENCES users (id) ON DELETE RESTRICT,
+  transaction_id BIGINT REFERENCES transactions (id) ON DELETE RESTRICT,
+  invoice_type invoice_type NOT NULL,
+  status invoice_status NOT NULL DEFAULT 'pending',
+  issue_date DATE NOT NULL,
+  due_date DATE NOT NULL,
+  paid_date TIMESTAMPTZ,
+  subtotal NUMERIC(15, 2) NOT NULL CHECK (subtotal >= 0),
+  tax_amount NUMERIC(15, 2) NOT NULL DEFAULT 0.00 CHECK (tax_amount >= 0),
+  tax_rate NUMERIC(5, 2) NOT NULL DEFAULT 19.25 CHECK (tax_rate >= 0),
+  total_amount NUMERIC(15, 2) NOT NULL CHECK (total_amount >= 0),
+  currency CHAR(3) NOT NULL DEFAULT 'XAF',
+  pdf_path TEXT,
+  payment_terms VARCHAR(255),
+  notes TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Subscription and billing tables
+CREATE TABLE subscription_plans (
+  id SMALLINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  plan_name VARCHAR(50) UNIQUE NOT NULL,
+  plan_code VARCHAR(20) UNIQUE NOT NULL,
+  price_monthly NUMERIC(10, 2) NOT NULL CHECK (price_monthly >= 0),
+  price_yearly NUMERIC(10, 2) CHECK (price_yearly >= 0),
+  currency CHAR(3) NOT NULL DEFAULT 'XAF',
+  max_listings SMALLINT NOT NULL,
+  max_photos_per_listing SMALLINT NOT NULL,
+  max_videos_per_listing SMALLINT NOT NULL DEFAULT 0,
+  featured_listings_included SMALLINT NOT NULL DEFAULT 0,
+  transaction_fee_percentage NUMERIC(4, 2) NOT NULL CHECK (transaction_fee_percentage >= 0),
+  priority_support BOOLEAN NOT NULL DEFAULT FALSE,
+  analytics_access BOOLEAN NOT NULL DEFAULT FALSE,
+  api_access BOOLEAN NOT NULL DEFAULT FALSE,
+  bulk_listing_tools BOOLEAN NOT NULL DEFAULT FALSE,
+  company_profile BOOLEAN NOT NULL DEFAULT FALSE,
+  badge_display VARCHAR(50),
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  sort_order SMALLINT NOT NULL,
+  description TEXT NOT NULL,
+  features JSONB NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE user_subscriptions (
+  id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  user_id BIGINT NOT NULL REFERENCES users (id) ON DELETE RESTRICT,
+  plan_id SMALLINT NOT NULL REFERENCES subscription_plans (id) ON DELETE RESTRICT,
+  subscription_status subscription_status NOT NULL DEFAULT 'active',
+  billing_cycle billing_cycle NOT NULL,
+  start_date DATE NOT NULL,
+  end_date DATE NOT NULL,
+  next_billing_date DATE NOT NULL,
+  cancelled_at TIMESTAMPTZ,
+  cancellation_reason TEXT,
+  auto_renew BOOLEAN NOT NULL DEFAULT TRUE,
+  price_paid NUMERIC(10, 2) NOT NULL CHECK (price_paid >= 0),
+  currency CHAR(3) NOT NULL DEFAULT 'XAF',
+  payment_method_id BIGINT REFERENCES payment_methods (id) ON DELETE RESTRICT,
+  listing_count_used SMALLINT NOT NULL DEFAULT 0,
+  listing_count_limit SMALLINT NOT NULL,
+  featured_count_used SMALLINT NOT NULL DEFAULT 0,
+  featured_count_limit SMALLINT NOT NULL,
+  grace_period_end DATE,
+  suspension_reason TEXT,
+  metadata JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE subscription_invoices (
+  id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  subscription_id BIGINT NOT NULL REFERENCES user_subscriptions (id) ON DELETE RESTRICT,
+  invoice_number VARCHAR(50) UNIQUE NOT NULL,
+  period_start DATE NOT NULL,
+  period_end DATE NOT NULL,
+  amount NUMERIC(10, 2) NOT NULL CHECK (amount >= 0),
+  tax_amount NUMERIC(10, 2) NOT NULL DEFAULT 0.00 CHECK (tax_amount >= 0),
+  total_amount NUMERIC(10, 2) NOT NULL CHECK (total_amount >= 0),
+  status subscription_invoice_status NOT NULL DEFAULT 'pending',
+  paid_at TIMESTAMPTZ,
+  payment_method_id BIGINT REFERENCES payment_methods (id) ON DELETE RESTRICT,
+  payment_reference VARCHAR(255),
+  pdf_path TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Lawyer and professional services tables
+CREATE TABLE lawyer_profiles (
+  id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  user_id BIGINT NOT NULL REFERENCES users (id) ON DELETE RESTRICT,
+  bar_number VARCHAR(50) UNIQUE NOT NULL,
+  bar_admission_date DATE NOT NULL,
+  bar_council VARCHAR(255) NOT NULL,
+  law_firm_name VARCHAR(255),
+  law_firm_address TEXT,
+  years_of_experience SMALLINT NOT NULL,
+  specialization JSONB NOT NULL,
+  languages JSONB NOT NULL,
+  consultation_fee NUMERIC(10, 2) CHECK (consultation_fee >= 0),
+  fixed_fee_services JSONB,
+  service_regions JSONB NOT NULL,
+  availability JSONB,
+  average_rating NUMERIC(3, 2) NOT NULL DEFAULT 0.00,
+  total_reviews INTEGER NOT NULL DEFAULT 0,
+  successful_cases INTEGER NOT NULL DEFAULT 0,
+  verification_status verification_status NOT NULL DEFAULT 'pending',
+  verified_by BIGINT REFERENCES users (id) ON DELETE RESTRICT,
+  verified_at TIMESTAMPTZ,
+  certificate_path TEXT NOT NULL,
+  insurance_certificate_path TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE lawyer_reviews (
+  id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  lawyer_id BIGINT NOT NULL REFERENCES lawyer_profiles (id) ON DELETE RESTRICT,
+  reviewer_id BIGINT NOT NULL REFERENCES users (id) ON DELETE RESTRICT,
+  transaction_id BIGINT REFERENCES transactions (id) ON DELETE RESTRICT,
+  rating SMALLINT NOT NULL CHECK (rating BETWEEN 1 AND 5),
+  title VARCHAR(255),
+  review_text TEXT NOT NULL,
+  professionalism_rating SMALLINT,
+  communication_rating SMALLINT,
+  responsiveness_rating SMALLINT,
+  value_rating SMALLINT,
+  is_verified_purchase BOOLEAN NOT NULL DEFAULT TRUE,
+  is_anonymous BOOLEAN NOT NULL DEFAULT FALSE,
+  status review_status NOT NULL DEFAULT 'published',
+  moderator_notes TEXT,
+  helpful_count INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (lawyer_id, reviewer_id, transaction_id)
+);
+
+CREATE TABLE surveyor_profiles (
+  id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  user_id BIGINT NOT NULL REFERENCES users (id) ON DELETE RESTRICT,
+  license_number VARCHAR(50) UNIQUE NOT NULL,
+  license_issuing_authority VARCHAR(255) NOT NULL,
+  license_expiry DATE NOT NULL,
+  years_experience SMALLINT NOT NULL,
+  equipment_owned JSONB,
+  service_regions JSONB NOT NULL,
+  certification_path TEXT NOT NULL,
+  insurance_path TEXT,
+  verification_status verification_status NOT NULL DEFAULT 'pending',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Messaging and communication tables
+CREATE TABLE conversations (
+  id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  uuid UUID UNIQUE NOT NULL DEFAULT gen_random_uuid(),
+  property_id BIGINT REFERENCES properties (id) ON DELETE RESTRICT,
+  transaction_id BIGINT REFERENCES transactions (id) ON DELETE RESTRICT,
+  conversation_type conversation_type NOT NULL,
+  title VARCHAR(255),
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  last_message_at TIMESTAMPTZ,
+  last_message_preview VARCHAR(255),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE conversation_participants (
+  id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  conversation_id BIGINT NOT NULL REFERENCES conversations (id) ON DELETE RESTRICT,
+  user_id BIGINT NOT NULL REFERENCES users (id) ON DELETE RESTRICT,
+  role conversation_role NOT NULL DEFAULT 'participant',
+  joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  left_at TIMESTAMPTZ,
+  last_read_at TIMESTAMPTZ,
+  is_muted BOOLEAN NOT NULL DEFAULT FALSE,
+  is_archived BOOLEAN NOT NULL DEFAULT FALSE,
+  notification_preferences JSONB,
+  UNIQUE (conversation_id, user_id)
+);
+
+CREATE TABLE messages (
+  id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  conversation_id BIGINT NOT NULL REFERENCES conversations (id) ON DELETE RESTRICT,
+  sender_id BIGINT NOT NULL REFERENCES users (id) ON DELETE RESTRICT,
+  message_type message_type NOT NULL DEFAULT 'text',
+  content TEXT NOT NULL,
+  attachments JSONB,
+  offer_data JSONB,
+  location_data JSONB,
+  is_system_message BOOLEAN NOT NULL DEFAULT FALSE,
+  is_edited BOOLEAN NOT NULL DEFAULT FALSE,
+  edited_at TIMESTAMPTZ,
+  deleted_at TIMESTAMPTZ,
+  delivered_at TIMESTAMPTZ,
+  read_at TIMESTAMPTZ,
+  client_metadata JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+) PARTITION BY RANGE (created_at);
+
+CREATE TABLE messages_default PARTITION OF messages DEFAULT;
+
+CREATE INDEX idx_messages_conversation_created ON messages (conversation_id, created_at);
+
+CREATE TABLE message_status (
+  id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  message_id BIGINT NOT NULL REFERENCES messages (id) ON DELETE RESTRICT,
+  user_id BIGINT NOT NULL REFERENCES users (id) ON DELETE RESTRICT,
+  status message_status_type NOT NULL DEFAULT 'sent',
+  delivered_at TIMESTAMPTZ,
+  read_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (message_id, user_id)
+);
+
+-- Favorites and saved searches
+CREATE TABLE favorites (
+  id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  user_id BIGINT NOT NULL REFERENCES users (id) ON DELETE RESTRICT,
+  property_id BIGINT NOT NULL REFERENCES properties (id) ON DELETE RESTRICT,
+  notes TEXT,
+  folder_name VARCHAR(100) NOT NULL DEFAULT 'default',
+  notification_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (user_id, property_id)
+);
+
+CREATE TABLE saved_searches (
+  id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  user_id BIGINT NOT NULL REFERENCES users (id) ON DELETE RESTRICT,
+  search_name VARCHAR(255) NOT NULL,
+  search_criteria JSONB NOT NULL,
+  notification_frequency notification_frequency NOT NULL DEFAULT 'daily',
+  last_notified_at TIMESTAMPTZ,
+  new_matches_count INTEGER NOT NULL DEFAULT 0,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Audit and security tables
+CREATE TABLE audit_logs (
+  id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  user_id BIGINT REFERENCES users (id) ON DELETE SET NULL,
+  action VARCHAR(100) NOT NULL,
+  entity_type VARCHAR(50) NOT NULL,
+  entity_id BIGINT NOT NULL,
+  old_values JSONB,
+  new_values JSONB,
+  ip_address INET,
+  user_agent TEXT,
+  session_id VARCHAR(255),
+  request_id VARCHAR(100),
+  response_time_ms INTEGER,
+  status_code SMALLINT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+) PARTITION BY RANGE (created_at);
+
+CREATE TABLE audit_logs_default PARTITION OF audit_logs DEFAULT;
+
+CREATE INDEX idx_audit_logs_entity ON audit_logs (entity_type, entity_id);
+CREATE INDEX idx_audit_logs_user_created ON audit_logs (user_id, created_at);
+
+CREATE TABLE login_attempts (
+  id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  email VARCHAR(255),
+  user_id BIGINT REFERENCES users (id) ON DELETE SET NULL,
+  ip_address INET NOT NULL,
+  user_agent TEXT,
+  success BOOLEAN NOT NULL DEFAULT FALSE,
+  failure_reason VARCHAR(255),
+  two_factor_used BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_login_attempts_ip_created ON login_attempts (ip_address, created_at);
+
+CREATE TABLE api_keys (
+  id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  user_id BIGINT NOT NULL REFERENCES users (id) ON DELETE RESTRICT,
+  name VARCHAR(255) NOT NULL,
+  key_hash CHAR(64) UNIQUE NOT NULL,
+  key_preview CHAR(8) NOT NULL,
+  permissions JSONB NOT NULL,
+  allowed_ips JSONB,
+  last_used_at TIMESTAMPTZ,
+  expires_at TIMESTAMPTZ,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE document_verification_logs (
+  id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  document_id BIGINT NOT NULL REFERENCES property_documents (id) ON DELETE RESTRICT,
+  verifier_id BIGINT REFERENCES users (id) ON DELETE RESTRICT,
+  verification_type verification_log_type NOT NULL,
+  action verification_action NOT NULL,
+  notes TEXT,
+  confidence_score NUMERIC(3, 2),
+  flags JSONB,
+  metadata JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Dispute and resolution tables
+CREATE TABLE disputes (
+  id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  dispute_number VARCHAR(50) UNIQUE NOT NULL,
+  transaction_id BIGINT NOT NULL REFERENCES transactions (id) ON DELETE RESTRICT,
+  raised_by_id BIGINT NOT NULL REFERENCES users (id) ON DELETE RESTRICT,
+  raised_against_id BIGINT NOT NULL REFERENCES users (id) ON DELETE RESTRICT,
+  dispute_type dispute_type NOT NULL,
+  status dispute_status NOT NULL DEFAULT 'open',
+  priority dispute_priority NOT NULL DEFAULT 'medium',
+  description TEXT NOT NULL,
+  evidence_documents JSONB,
+  requested_resolution TEXT NOT NULL,
+  assigned_to_id BIGINT REFERENCES users (id) ON DELETE RESTRICT,
+  assigned_at TIMESTAMPTZ,
+  resolution_decision TEXT,
+  resolution_date TIMESTAMPTZ,
+  resolved_by_id BIGINT REFERENCES users (id) ON DELETE RESTRICT,
+  appeal_deadline TIMESTAMPTZ,
+  appeal_filed BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE dispute_messages (
+  id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  dispute_id BIGINT NOT NULL REFERENCES disputes (id) ON DELETE RESTRICT,
+  sender_id BIGINT NOT NULL REFERENCES users (id) ON DELETE RESTRICT,
+  message TEXT NOT NULL,
+  attachments JSONB,
+  is_private BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Analytics and reporting tables
+CREATE TABLE property_views (
+  id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  property_id BIGINT NOT NULL REFERENCES properties (id) ON DELETE RESTRICT,
+  user_id BIGINT REFERENCES users (id) ON DELETE SET NULL,
+  session_id VARCHAR(100),
+  ip_address INET,
+  user_agent TEXT,
+  referrer TEXT,
+  view_duration_seconds INTEGER,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+) PARTITION BY RANGE (created_at);
+
+CREATE TABLE property_views_default PARTITION OF property_views DEFAULT;
+
+CREATE TABLE search_analytics (
+  id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  user_id BIGINT REFERENCES users (id) ON DELETE SET NULL,
+  session_id VARCHAR(100),
+  search_query VARCHAR(255),
+  filters_applied JSONB NOT NULL,
+  result_count INTEGER NOT NULL,
+  clicked_property_id BIGINT REFERENCES properties (id) ON DELETE SET NULL,
+  click_position SMALLINT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+) PARTITION BY RANGE (created_at);
+
+CREATE TABLE search_analytics_default PARTITION OF search_analytics DEFAULT;
+
+-- Currency and exchange rates
+CREATE TABLE currencies (
+  code CHAR(3) PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  symbol VARCHAR(10),
+  decimals SMALLINT NOT NULL DEFAULT 2,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE currency_exchange_rates (
+  id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  base_currency CHAR(3) NOT NULL REFERENCES currencies (code) ON DELETE RESTRICT,
+  quote_currency CHAR(3) NOT NULL REFERENCES currencies (code) ON DELETE RESTRICT,
+  rate NUMERIC(18, 8) NOT NULL CHECK (rate > 0),
+  provider VARCHAR(100),
+  effective_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (base_currency, quote_currency, effective_at)
+);
+
+CREATE INDEX idx_exchange_rates_pair_time
+  ON currency_exchange_rates (base_currency, quote_currency, effective_at DESC);
+
+ALTER TABLE properties
+  ADD CONSTRAINT properties_currency_fkey
+  FOREIGN KEY (currency) REFERENCES currencies (code) ON DELETE RESTRICT;
+
+ALTER TABLE transactions
+  ADD CONSTRAINT transactions_currency_fkey
+  FOREIGN KEY (currency) REFERENCES currencies (code) ON DELETE RESTRICT;
+
+ALTER TABLE invoices
+  ADD CONSTRAINT invoices_currency_fkey
+  FOREIGN KEY (currency) REFERENCES currencies (code) ON DELETE RESTRICT;
+
+ALTER TABLE subscription_plans
+  ADD CONSTRAINT subscription_plans_currency_fkey
+  FOREIGN KEY (currency) REFERENCES currencies (code) ON DELETE RESTRICT;
+
+ALTER TABLE user_subscriptions
+  ADD CONSTRAINT user_subscriptions_currency_fkey
+  FOREIGN KEY (currency) REFERENCES currencies (code) ON DELETE RESTRICT;
+
+-- System configuration tables
+CREATE TABLE system_settings (
+  id SMALLINT PRIMARY KEY,
+  setting_key VARCHAR(100) UNIQUE NOT NULL,
+  setting_value JSONB NOT NULL,
+  description TEXT,
+  is_encrypted BOOLEAN NOT NULL DEFAULT FALSE,
+  updated_by BIGINT REFERENCES users (id) ON DELETE RESTRICT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE email_templates (
+  id SMALLINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  template_name VARCHAR(100) UNIQUE NOT NULL,
+  subject_en VARCHAR(255) NOT NULL,
+  subject_fr VARCHAR(255) NOT NULL,
+  body_en TEXT NOT NULL,
+  body_fr TEXT NOT NULL,
+  variables JSONB NOT NULL,
+  attachments JSONB,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE sms_templates (
+  id SMALLINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  template_name VARCHAR(100) UNIQUE NOT NULL,
+  body_en VARCHAR(160) NOT NULL,
+  body_fr VARCHAR(160) NOT NULL,
+  variables JSONB NOT NULL,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Updated-at trigger helper
+CREATE OR REPLACE FUNCTION set_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Triggers for updated_at
+CREATE TRIGGER users_set_updated_at BEFORE UPDATE ON users
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+CREATE TRIGGER user_addresses_set_updated_at BEFORE UPDATE ON user_addresses
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+CREATE TRIGGER identity_documents_set_updated_at BEFORE UPDATE ON identity_documents
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+CREATE TRIGGER business_verifications_set_updated_at BEFORE UPDATE ON business_verifications
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+CREATE TRIGGER properties_set_updated_at BEFORE UPDATE ON properties
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+CREATE TRIGGER property_locations_set_updated_at BEFORE UPDATE ON property_locations
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+CREATE TRIGGER property_documents_set_updated_at BEFORE UPDATE ON property_documents
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+CREATE TRIGGER property_images_set_updated_at BEFORE UPDATE ON property_images
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+CREATE TRIGGER land_titles_set_updated_at BEFORE UPDATE ON land_titles
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+CREATE TRIGGER property_verification_requests_set_updated_at BEFORE UPDATE ON property_verification_requests
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+CREATE TRIGGER property_verification_steps_set_updated_at BEFORE UPDATE ON property_verification_steps
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+CREATE TRIGGER transactions_set_updated_at BEFORE UPDATE ON transactions
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+CREATE TRIGGER escrow_accounts_set_updated_at BEFORE UPDATE ON escrow_accounts
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+CREATE TRIGGER escrow_transactions_set_updated_at BEFORE UPDATE ON escrow_transactions
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+CREATE TRIGGER payment_methods_set_updated_at BEFORE UPDATE ON payment_methods
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+CREATE TRIGGER invoices_set_updated_at BEFORE UPDATE ON invoices
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+CREATE TRIGGER subscription_plans_set_updated_at BEFORE UPDATE ON subscription_plans
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+CREATE TRIGGER user_subscriptions_set_updated_at BEFORE UPDATE ON user_subscriptions
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+CREATE TRIGGER subscription_invoices_set_updated_at BEFORE UPDATE ON subscription_invoices
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+CREATE TRIGGER lawyer_profiles_set_updated_at BEFORE UPDATE ON lawyer_profiles
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+CREATE TRIGGER lawyer_reviews_set_updated_at BEFORE UPDATE ON lawyer_reviews
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+CREATE TRIGGER surveyor_profiles_set_updated_at BEFORE UPDATE ON surveyor_profiles
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+CREATE TRIGGER conversations_set_updated_at BEFORE UPDATE ON conversations
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+CREATE TRIGGER message_status_set_updated_at BEFORE UPDATE ON message_status
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+CREATE TRIGGER saved_searches_set_updated_at BEFORE UPDATE ON saved_searches
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+CREATE TRIGGER api_keys_set_updated_at BEFORE UPDATE ON api_keys
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+CREATE TRIGGER disputes_set_updated_at BEFORE UPDATE ON disputes
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+CREATE TRIGGER currencies_set_updated_at BEFORE UPDATE ON currencies
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+CREATE TRIGGER system_settings_set_updated_at BEFORE UPDATE ON system_settings
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+CREATE TRIGGER email_templates_set_updated_at BEFORE UPDATE ON email_templates
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+CREATE TRIGGER sms_templates_set_updated_at BEFORE UPDATE ON sms_templates
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+COMMIT;
