@@ -1,0 +1,88 @@
+openapi: 3.0.3
+info:
+  title: Real Estate Secure API
+  version: 0.1.0
+servers:
+  - url: /v1
+paths:
+  /health:
+    get:
+      summary: Liveness probe
+      responses:
+        '200':
+          description: Service is alive
+  /ready:
+    get:
+      summary: Readiness probe
+      responses:
+        '200':
+          description: Service is ready
+        '503':
+          description: Service is degraded
+  /subscriptions/plans:
+    get:
+      summary: List subscription plans
+      responses:
+        '200':
+          description: Active subscription plans
+  /currencies:
+    get:
+      summary: List currencies
+      responses:
+        '200':
+          description: Active currencies
+  /currencies/{code}/rates:
+    get:
+      summary: List exchange rates for a base currency
+      parameters:
+        - in: path
+          name: code
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Exchange rates
+  /properties:
+    get:
+      summary: List active properties
+      parameters:
+        - in: query
+          name: property_type
+          schema:
+            type: string
+        - in: query
+          name: listing_type
+          schema:
+            type: string
+        - in: query
+          name: region
+          schema:
+            type: string
+        - in: query
+          name: city
+          schema:
+            type: string
+        - in: query
+          name: min_price
+          schema:
+            type: number
+        - in: query
+          name: max_price
+          schema:
+            type: number
+        - in: query
+          name: featured
+          schema:
+            type: boolean
+        - in: query
+          name: limit
+          schema:
+            type: integer
+        - in: query
+          name: offset
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Property summaries
