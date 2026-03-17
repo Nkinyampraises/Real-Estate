@@ -1,8 +1,3 @@
 # Shared
 
-Shared assets across services.
-
-Suggested contents:
-- API contracts (OpenAPI/JSON Schema)
-- shared DTOs or client libraries
-- reusable validation logic
+Shared contracts and utilities used across services and apps.

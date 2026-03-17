@@ -1,43 +1,57 @@
-sealed class AppResult<T> {
-  const AppResult();
+sealed class Result<T> {
+  const Result();
 
-  R when<R>({
-    required R Function(T value) ok,
-    required R Function(AppError error) err,
-  }) {
-    if (this is Ok<T>) {
-      return ok((this as Ok<T>).value);
-    }
-    return err((this as Err<T>).error);
-  }
+  R fold<R>({
+    required R Function(T value) onSuccess,
+    required R Function(AppError error) onFailure,
+  });
+
+  Result<R> map<R>(R Function(T value) transform) => fold(
+        onSuccess: (value) => Success(transform(value)),
+        onFailure: Failure.new,
+      );
 }
 
-class Ok<T> extends AppResult<T> {
+class Success<T> extends Result<T> {
+  const Success(this.value);
+
   final T value;
 
-  const Ok(this.value);
+  @override
+  R fold<R>({
+    required R Function(T value) onSuccess,
+    required R Function(AppError error) onFailure,
+  }) =>
+      onSuccess(value);
 }
 
-class Err<T> extends AppResult<T> {
+class Failure<T> extends Result<T> {
+  const Failure(this.error);
+
   final AppError error;
 
-  const Err(this.error);
+  @override
+  R fold<R>({
+    required R Function(T value) onSuccess,
+    required R Function(AppError error) onFailure,
+  }) =>
+      onFailure(error);
 }
 
 sealed class AppError {
-  final String message;
-
   const AppError(this.message);
+
+  final String message;
 }
 
 class ValidationError extends AppError {
-  const ValidationError(String message) : super(message);
+  const ValidationError(super.message);
 }
 
 class NotFoundError extends AppError {
-  const NotFoundError(String message) : super(message);
+  const NotFoundError(super.message);
 }
 
 class DatabaseError extends AppError {
-  const DatabaseError(String message) : super(message);
+  const DatabaseError(super.message);
 }

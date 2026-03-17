@@ -1,33 +1,33 @@
-# Backend (Dart)
+# Backend
 
-Production-grade Dart backend for Real Estate Secure. The initial layout is a
-modular monolith using `shelf`, designed to evolve into services when scale
-demands it.
+Production-grade Dart backend for the Real-Estate-Secure platform.
 
-## Stack
-- Dart 3
-- Shelf + Shelf Router (HTTP)
-- PostgreSQL (primary data store)
-- Redis (cache/session) planned
-- S3/MinIO (document storage) planned
+## Local setup
 
-## Quick Start
-1. Copy `backend/.env.example` to `backend/.env` and update values.
-2. Run the server:
+1. Copy `.env.example` to `.env` and update credentials.
+2. Install dependencies:
+   `dart pub get`
+3. Run the API:
    `dart run bin/server.dart`
 
-## Endpoints
-- `GET /v1` service banner
-- `GET /v1/health` liveness probe
-- `GET /v1/ready` readiness probe (checks database)
-- `GET /v1/subscriptions/plans` active subscription plans
-- `GET /v1/currencies` active currencies
-- `GET /v1/currencies/{code}/rates` exchange rates for base currency
-- `GET /v1/properties` list active properties with filters
-
 ## Structure
-- `bin/` entrypoints
+
+- `bin/` entrypoint
 - `lib/src/` application code
-  - `core/` shared primitives and utilities
-  - `routes/` HTTP routing
-  - `middleware/` cross-cutting HTTP middleware
+- `lib/src/routes/` HTTP routes
+- `lib/src/db/` database access
+- `lib/src/models/` domain models
+
+## API surface (v1)
+
+Base path: `/v1`
+
+- Auth: `/auth/register`, `/auth/login`, `/auth/refresh`, `/auth/logout`
+- Users: `/users/profile`, `/users/kyc/upload`, `/users/kyc/status`
+- Properties: `/properties`, `/properties/search`, `/properties/map`
+- Transactions: `/transactions`, `/transactions/initiate`, `/transactions/{id}/deposit`
+- Lawyers: `/lawyers`, `/lawyers/{id}`, `/lawyers/pending`
+- Messaging: `/messaging/conversations`, `/messaging/conversations/{id}/messages`
+- Payments: `/payments/methods`, `/payments/history`, `/payments/withdraw`
+- Subscriptions: `/subscriptions/plans`, `/subscriptions/current`
+- Disputes: `/disputes`, `/disputes/{id}`

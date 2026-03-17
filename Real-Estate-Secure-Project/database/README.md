@@ -1,20 +1,12 @@
 # Database
 
-Production-grade PostgreSQL schema and migrations for Real Estate Secure.
+PostgreSQL migrations, seed data, and schema documentation for Real-Estate-Secure.
 
 ## Structure
-- `migrations/` versioned migrations (start here)
-- `schema/` ERD exports or reference schemas
-- `seeds/` seed data for local/dev
 
-## Current Schema
-- `database/migrations/0001_init.sql` (full baseline schema)
+- `migrations/` schema migrations (run in order)
+- `seeds/` reference data for currencies and subscription plans
 
-## Seeds
-- `database/seeds/0000_currencies.sql`
-- `database/seeds/0001_subscription_plans.sql`
-- `database/seeds/0002_exchange_rates.sql`
+## Usage
 
-## Running Migrations
-- PowerShell: `scripts/db-migrate.ps1`
-- Bash: `scripts/db-migrate.sh`
+Apply migrations with your preferred tooling (Flyway, Sqitch, or a custom runner).

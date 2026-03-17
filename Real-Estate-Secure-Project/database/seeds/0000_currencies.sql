@@ -1,9 +1,7 @@
-BEGIN;
-
-INSERT INTO currencies (code, name, symbol, decimals, is_active)
+INSERT INTO currencies (code, name, symbol, is_active)
 VALUES
-  ('XAF', 'Central African CFA franc', 'FCFA', 0, TRUE),
-  ('USD', 'United States dollar', '$', 2, TRUE),
-  ('EUR', 'Euro', 'EUR', 2, TRUE);
-
-COMMIT;
+  ('XAF', 'Central African CFA franc', 'FCFA', true),
+  ('USD', 'United States Dollar', '$', true),
+  ('EUR', 'Euro', '€', true),
+  ('GBP', 'British Pound', '£', true),
+  ('NGN', 'Nigerian Naira', '₦', true);

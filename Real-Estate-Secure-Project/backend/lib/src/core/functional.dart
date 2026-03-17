@@ -1,27 +1,29 @@
-List<String> parseCsv(
-  String raw, {
-  String separator = ',',
-  bool trimValues = true,
-}) {
-  final parts = raw.split(separator);
-  final normalized = trimValues
-      ? parts.map((value) => value.trim())
-      : parts.map((value) => value);
-  return normalized.where((value) => value.isNotEmpty).toList(growable: false);
-}
-
-String joinWith(String separator, String first, [List<String> rest = const []]) =>
-    ([first, ...rest]).join(separator);
-
-extension StringX on String {
-  String get normalized => trim().toLowerCase();
-
-  String operator &(String other) => '$this$other';
-}
-
 extension IterableX<T> on Iterable<T> {
-  List<T> toImmutable() => List.unmodifiable(this);
+  Iterable<R> mapNotNull<R>(R? Function(T value) transform) sync* {
+    for (final item in this) {
+      final result = transform(item);
+      if (result != null) {
+        yield result;
+      }
+    }
+  }
 
-  int countWhere(bool Function(T item) predicate) =>
-      fold(0, (count, item) => predicate(item) ? count + 1 : count);
+  Map<K, List<T>> groupBy<K>(K Function(T value) keyOf) {
+    return fold<Map<K, List<T>>>({}, (acc, item) {
+      final key = keyOf(item);
+      final bucket = acc[key] ?? <T>[];
+      acc[key] = [...bucket, item];
+      return acc;
+    });
+  }
+
+  R foldIndexed<R>(R initial, R Function(R acc, int index, T item) combine) {
+    var result = initial;
+    var index = 0;
+    for (final item in this) {
+      result = combine(result, index, item);
+      index += 1;
+    }
+    return result;
+  }
 }

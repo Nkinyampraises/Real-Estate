@@ -1,12 +1,8 @@
 # Docs
 
-Documentation for architecture, decisions, and APIs.
+Architecture notes, system flows, and API documentation for Real-Estate-Secure.
 
-Suggested structure:
-- `architecture/` system diagrams and design docs
-- `adr/` architecture decision records
-- `api/` API contracts and reference docs
+## Contents
 
-## Key Docs
-- `docs/architecture/system-architecture.md`
-- `docs/api/openapi.yaml`
+- `architecture/system-architecture.md`
+- `architecture/workflows.md`

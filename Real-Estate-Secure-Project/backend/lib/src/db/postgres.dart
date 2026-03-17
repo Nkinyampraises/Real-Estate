@@ -1,63 +1,38 @@
-import 'dart:async';
-
 import 'package:postgres/postgres.dart';
 
-import '../config.dart';
-import '../core/result.dart';
+class Database {
+  Database(this._connection);
 
-class DbPool {
-  final DatabaseConfig config;
-  Connection? _connection;
-  bool _isOpen = false;
+  final Connection _connection;
 
-  DbPool(this.config);
-
-  Future<Connection> _open() async {
-    final existing = _connection;
-    if (existing != null && _isOpen) {
-      return existing;
-    }
-
-    final endpoint = Endpoint(
-      host: config.host,
-      port: config.port,
-      database: config.name,
-      username: config.user,
-      password: config.password,
+  static Future<Database> connect(String databaseUrl) async {
+    final endpoint = _parseEndpoint(databaseUrl);
+    final connection = await Connection.open(
+      endpoint,
+      settings: const ConnectionSettings(sslMode: SslMode.disable),
     );
-
-    final settings = ConnectionSettings(
-      sslMode: config.useSsl ? SslMode.require : SslMode.disable,
-    );
-
-    final connection = await Connection.open(endpoint, settings: settings);
-    _connection = connection;
-    _isOpen = true;
-    return connection;
+    return Database(connection);
   }
 
-  Future<Connection> connect() => _open();
+  Future<T> withConnection<T>(Future<T> Function(Connection connection) run) =>
+      run(_connection);
 
-  Future<AppResult<void>> ping({Duration timeout = const Duration(seconds: 2)}) async {
-    try {
-      final connection = await _open();
-      await connection.execute('SELECT 1').timeout(timeout);
-      return const Ok(null);
-    } on TimeoutException {
-      return const Err(DatabaseError('Database ping timed out.'));
-    } catch (error) {
-      return Err(DatabaseError('Database ping failed: $error'));
-    }
-  }
+  Future<void> close() => _connection.close();
+}
 
-  Future<void> close() async {
-    final connection = _connection;
-    if (connection == null) {
-      return;
-    }
+Endpoint _parseEndpoint(String databaseUrl) {
+  final uri = Uri.parse(databaseUrl);
+  final userInfo = uri.userInfo.split(':');
+  final username = userInfo.isNotEmpty ? userInfo.first : null;
+  final password = userInfo.length > 1 ? userInfo[1] : null;
+  final database =
+      uri.pathSegments.isNotEmpty ? uri.pathSegments.last : 'postgres';
 
-    await connection.close();
-    _connection = null;
-    _isOpen = false;
-  }
+  return Endpoint(
+    host: uri.host.isEmpty ? 'localhost' : uri.host,
+    port: uri.hasPort ? uri.port : 5432,
+    database: database,
+    username: username?.isEmpty == true ? null : username,
+    password: password?.isEmpty == true ? null : password,
+  );
 }

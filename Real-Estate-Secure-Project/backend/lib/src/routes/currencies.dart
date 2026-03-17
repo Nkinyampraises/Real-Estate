@@ -1,60 +1,39 @@
 import 'package:shelf/shelf.dart';
+import 'package:shelf_router/shelf_router.dart';
 
 import '../core/http.dart';
-import '../core/result.dart';
-import '../repositories/currency_repository.dart';
+import '../models/currency.dart';
+import '../middleware/request_context.dart';
 
-Future<Response> listCurrenciesHandler(
-  Request request,
-  CurrencyRepository repository,
-) async {
-  final result = await repository.listActive();
+Router buildCurrenciesRouter() {
+  final router = Router();
 
-  return result.when(
-    ok: (currencies) {
-      final data = currencies
-          .map((currency) => currency.toJson())
-          .toList(growable: false);
-      return jsonResponse({'data': data});
-    },
-    err: (error) => throw error,
-  );
-}
+  router.get('/', (Request request) {
+    return okResponse(
+      defaultCurrencies.map((currency) => currency.toJson()).toList(),
+      requestId: request.requestId,
+    );
+  });
 
-Future<Response> listExchangeRatesHandler(
-  Request request,
-  CurrencyRepository repository,
-  String baseCurrency,
-) async {
-  final query = request.url.queryParameters;
-  final quote = query['quote']?.toUpperCase();
-  final limit = _parseInt(query['limit'], defaultValue: 50, max: 200);
+  router.get('/rates', (Request request) {
+    return okResponse(
+      [
+        {
+          'base': 'XAF',
+          'quote': 'USD',
+          'rate': 0.0017,
+          'effective_date': DateTime.now().toIso8601String(),
+        },
+        {
+          'base': 'XAF',
+          'quote': 'EUR',
+          'rate': 0.0015,
+          'effective_date': DateTime.now().toIso8601String(),
+        },
+      ],
+      requestId: request.requestId,
+    );
+  });
 
-  final result = await repository.listRates(
-    baseCurrency: baseCurrency.toUpperCase(),
-    quoteCurrency: quote,
-    limit: limit,
-  );
-
-  return result.when(
-    ok: (rates) {
-      final data = rates.map((rate) => rate.toJson()).toList(growable: false);
-      return jsonResponse({'data': data});
-    },
-    err: (error) => throw error,
-  );
-}
-
-int _parseInt(String? raw, {required int defaultValue, int? max}) {
-  if (raw == null || raw.isEmpty) {
-    return defaultValue;
-  }
-  final value = int.tryParse(raw);
-  if (value == null || value < 0) {
-    throw const ValidationError('Invalid integer query parameter.');
-  }
-  if (max != null && value > max) {
-    return max;
-  }
-  return value;
+  return router;
 }

@@ -1,24 +1,39 @@
+import 'package:logging/logging.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf_cors_headers/shelf_cors_headers.dart';
 
 import 'config.dart';
-import 'db/postgres.dart';
 import 'middleware/error_handler.dart';
 import 'middleware/request_context.dart';
+import 'middleware/security_headers.dart';
 import 'routes/router.dart';
 
-Future<Handler> createApp(AppConfig config, DbPool db) async {
-  final router = buildRouter(config, db);
+Handler buildHandler(AppConfig config, Logger logger) {
+  final router = buildApiRouter();
 
-  final pipeline = const Pipeline()
+  return Pipeline()
       .addMiddleware(requestContextMiddleware())
-      .addMiddleware(errorHandlerMiddleware())
-      .addMiddleware(logRequests())
-      .addMiddleware(corsHeaders(headers: {
-        ACCESS_CONTROL_ALLOW_ORIGIN: config.corsAllowOrigin,
-        'Access-Control-Allow-Methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
-        'Access-Control-Allow-Headers': 'Origin, Content-Type, Authorization',
-      }));
+      .addMiddleware(errorHandler(logger))
+      .addMiddleware(_requestLogger(logger))
+      .addMiddleware(securityHeaders())
+      .addMiddleware(corsHeaders())
+      .addHandler(router);
+}
 
-  return pipeline.addHandler(router);
+Middleware _requestLogger(Logger logger) {
+  return (Handler innerHandler) {
+    return (Request request) async {
+      final stopwatch = Stopwatch()..start();
+      final response = await innerHandler(request);
+      stopwatch.stop();
+
+      logger.info(
+        '${request.method} ${request.requestedUri.path} '
+        '${response.statusCode} ${stopwatch.elapsedMilliseconds}ms '
+        'request_id=${request.requestId ?? 'unknown'}',
+      );
+
+      return response;
+    };
+  };
 }

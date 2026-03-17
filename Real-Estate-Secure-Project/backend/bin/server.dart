@@ -1,41 +1,41 @@
 import 'dart:io';
 
 import 'package:dotenv/dotenv.dart' as dotenv;
+import 'package:logging/logging.dart';
 import 'package:shelf/shelf_io.dart' as shelf_io;
 
 import 'package:real_estate_secure_backend/src/app.dart';
 import 'package:real_estate_secure_backend/src/config.dart';
-import 'package:real_estate_secure_backend/src/db/postgres.dart';
 
 Future<void> main(List<String> args) async {
-  dotenv.load();
+  final env = dotenv.DotEnv(includePlatformEnvironment: true)..load();
+  final config = AppConfig.fromEnv((key) => env[key]);
 
-  final config = AppConfig.fromEnv(dotenv.env);
-  final db = DbPool(config.database);
-  final handler = await createApp(config, db);
+  _configureLogging(config.logLevel);
+  final logger = Logger('real_estate_secure_backend');
 
+  final handler = buildHandler(config, logger);
   final server = await shelf_io.serve(
     handler,
     InternetAddress.anyIPv4,
     config.port,
   );
 
-  stdout.writeln(
-    'Real Estate Secure API listening on '
-    'http://${server.address.host}:${server.port} (${config.environment})',
+  logger.info(
+    'Server listening on http://${server.address.host}:${server.port} '
+    'env=${config.environment}',
   );
-
-  _registerShutdownHooks(server, db);
 }
 
-void _registerShutdownHooks(HttpServer server, DbPool db) {
-  Future<void> shutdown(String signal) async {
-    stdout.writeln('Shutting down ($signal)...');
-    await db.close();
-    await server.close(force: true);
-  }
-
-  for (final signal in [ProcessSignal.sigint, ProcessSignal.sigterm]) {
-    signal.watch().listen((_) => shutdown(signal.toString()));
-  }
+void _configureLogging(Level level) {
+  Logger.root.level = level;
+  Logger.root.onRecord.listen((record) {
+    final message =
+        '${record.time.toIso8601String()} ${record.level.name} ${record.message}';
+    if (record.error != null) {
+      stderr.writeln('$message error=${record.error}');
+    } else {
+      stdout.writeln(message);
+    }
+  });
 }
