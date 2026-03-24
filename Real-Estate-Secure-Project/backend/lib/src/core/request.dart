@@ -21,8 +21,10 @@ Future<Result<Map<String, dynamic>>> readJsonMap(Request request) async {
   }
 }
 
-String? readString(Map<String, dynamic> payload, String key) =>
-    payload[key] as String?;
+String? readString(Map<String, dynamic> payload, String key) {
+  final value = payload[key];
+  return value is String ? value : null;
+}
 
 int? readInt(Map<String, dynamic> payload, String key) {
   final value = payload[key];
